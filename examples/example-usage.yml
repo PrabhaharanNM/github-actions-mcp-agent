@@ -1,0 +1,76 @@
+# Example: Using the MCP Agent Action in your workflow.
+# This workflow triggers when another workflow fails, runs AI analysis,
+# and posts results as a GitHub issue and PR comment.
+
+name: Build Failure Analysis
+
+on:
+  workflow_run:
+    workflows: ["CI", "Build and Test", "Deploy"]
+    types:
+      - completed
+
+jobs:
+  analyze-failure:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    permissions:
+      issues: write
+      pull-requests: write
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run MCP Build Failure Analysis
+        uses: PrabhaharanNM/github-actions-mcp-agent@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+          aws-model-id: anthropic.claude-3-5-sonnet-20241022-v2:0
+
+          # Optional: Kubernetes monitoring
+          # k8s-api-url: ${{ secrets.K8S_API_URL }}
+          # k8s-token: ${{ secrets.K8S_TOKEN }}
+          # k8s-namespace: default
+
+          # Optional: JFrog Artifactory
+          # jfrog-url: ${{ secrets.JFROG_URL }}
+          # jfrog-username: ${{ secrets.JFROG_USERNAME }}
+          # jfrog-api-key: ${{ secrets.JFROG_API_KEY }}
+
+          # Optional: Jira integration
+          # jira-url: ${{ secrets.JIRA_URL }}
+          # jira-username: ${{ secrets.JIRA_USERNAME }}
+          # jira-api-token: ${{ secrets.JIRA_API_TOKEN }}
+          # jira-project: PROJ
+          # create-jira-ticket: true
+
+          # Optional: Email notification
+          # smtp-host: smtp.company.com
+          # smtp-from-address: ci@example.com
+          # smtp-username: ${{ secrets.SMTP_USERNAME }}
+          # smtp-password: ${{ secrets.SMTP_PASSWORD }}
+          # send-email: true
+
+          # Feature flags
+          create-issue: true
+          comment-on-pr: true
+
+          # Team mappings (JSON)
+          team-mappings: |
+            {
+              "frontend": {"name": "Frontend Team Lead", "email": "frontend@example.com", "jira_username": "frontend-lead"},
+              "backend":  {"name": "Backend Team Lead",  "email": "backend@example.com",  "jira_username": "backend-lead"},
+              "infra":    {"name": "Platform Team Lead", "email": "platform@example.com", "jira_username": "platform-lead"}
+            }
+
+      - name: Upload HTML Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcp-analysis-report
+          path: ${{ steps.analyze.outputs.html-report-path }}
+          retention-days: 30

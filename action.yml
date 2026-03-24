@@ -1,0 +1,216 @@
+name: 'MCP Agent: AI-Powered Build Failure Analysis'
+description: 'AI-powered build failure analysis using Claude with parallel MCP agents for GitHub Actions.'
+author: 'PrabhaharanNM'
+
+branding:
+  icon: 'search'
+  color: 'red'
+
+inputs:
+  # AI Provider Configuration
+  provider:
+    description: 'AI provider: "direct" (Anthropic API), "bedrock" (AWS), or "max" (self-hosted)'
+    required: false
+    default: 'direct'
+  anthropic-api-key:
+    description: 'Anthropic API key (required when provider is "direct")'
+    required: false
+  anthropic-base-url:
+    description: 'Anthropic API base URL'
+    required: false
+    default: 'https://api.anthropic.com'
+  model-id:
+    description: 'Claude model ID'
+    required: false
+    default: 'claude-sonnet-4-20250514'
+
+  # GitHub
+  github-token:
+    description: 'GitHub token for API access (defaults to GITHUB_TOKEN)'
+    required: false
+    default: ${{ github.token }}
+
+  # AWS Bedrock (when provider is "bedrock")
+  aws-region:
+    description: 'AWS region for Bedrock'
+    required: false
+    default: 'us-west-2'
+  aws-model-id:
+    description: 'Claude model ID on Bedrock'
+    required: false
+    default: 'anthropic.claude-3-5-sonnet-20241022-v2:0'
+  aws-access-key-id:
+    description: 'AWS access key ID (required when provider is "bedrock")'
+    required: false
+  aws-secret-access-key:
+    description: 'AWS secret access key (required when provider is "bedrock")'
+    required: false
+  aws-session-token:
+    description: 'AWS session token (optional, for temporary credentials)'
+    required: false
+  aws-vpc-endpoint:
+    description: 'Custom VPC endpoint URL for Bedrock (optional)'
+    required: false
+
+  # Tier
+  tier:
+    description: 'Feature tier: "free" (RCA + email) or "premium" (adds dashboard + MTTR tracking)'
+    required: false
+    default: 'free'
+  dashboard-url:
+    description: 'Dashboard URL for posting analysis results (premium tier)'
+    required: false
+
+  # Kubernetes (optional)
+  k8s-api-url:
+    description: 'Kubernetes API server URL'
+    required: false
+  k8s-token:
+    description: 'Kubernetes auth token'
+    required: false
+  k8s-namespace:
+    description: 'Kubernetes namespace'
+    required: false
+    default: 'default'
+
+  # Jira (optional)
+  jira-url:
+    description: 'Jira URL for ticket creation'
+    required: false
+  jira-username:
+    description: 'Jira username/email'
+    required: false
+  jira-api-token:
+    description: 'Jira API token'
+    required: false
+  jira-project:
+    description: 'Jira project key'
+    required: false
+    default: ''
+
+  # Email (optional)
+  smtp-host:
+    description: 'SMTP host for email notifications'
+    required: false
+  smtp-port:
+    description: 'SMTP port'
+    required: false
+    default: '587'
+  smtp-ssl:
+    description: 'Enable SSL for SMTP'
+    required: false
+    default: 'true'
+  smtp-from-address:
+    description: 'Email from address'
+    required: false
+  smtp-from-name:
+    description: 'Email from name'
+    required: false
+    default: 'MCP Build Failure Agent'
+  smtp-username:
+    description: 'SMTP username'
+    required: false
+  smtp-password:
+    description: 'SMTP password'
+    required: false
+
+  # Output options
+  create-issue:
+    description: 'Create a GitHub issue with the analysis results'
+    required: false
+    default: 'true'
+  comment-on-pr:
+    description: 'Comment analysis results on the associated PR'
+    required: false
+    default: 'true'
+  create-jira-ticket:
+    description: 'Create a Jira ticket with analysis results'
+    required: false
+    default: 'false'
+  send-email:
+    description: 'Send email notification with analysis results'
+    required: false
+    default: 'false'
+
+  # Software Category Selection
+  repo-software:
+    description: 'Repository software: "github" or "bitbucket"'
+    required: false
+    default: 'github'
+  cluster-type:
+    description: 'Cluster type: "kubernetes" or "docker"'
+    required: false
+    default: ''
+  artifact-manager:
+    description: 'Artifact manager: "jfrog" or "nexus"'
+    required: false
+    default: ''
+
+  # BitBucket (when repo-software is "bitbucket")
+  bitbucket-url:
+    description: 'BitBucket server URL'
+    required: false
+  bitbucket-username:
+    description: 'BitBucket username'
+    required: false
+  bitbucket-password:
+    description: 'BitBucket password/token'
+    required: false
+
+  # Docker (when cluster-type is "docker")
+  docker-host:
+    description: 'Docker daemon host URL'
+    required: false
+  docker-tls-cert:
+    description: 'Docker TLS client certificate'
+    required: false
+  docker-tls-key:
+    description: 'Docker TLS client key'
+    required: false
+  docker-tls-ca-cert:
+    description: 'Docker TLS CA certificate'
+    required: false
+
+  # JFrog (when artifact-manager is "jfrog")
+  jfrog-url:
+    description: 'JFrog Artifactory URL'
+    required: false
+  jfrog-username:
+    description: 'JFrog username'
+    required: false
+  jfrog-api-key:
+    description: 'JFrog API key'
+    required: false
+
+  # Nexus (when artifact-manager is "nexus")
+  nexus-url:
+    description: 'Nexus Repository URL'
+    required: false
+  nexus-username:
+    description: 'Nexus username'
+    required: false
+  nexus-password:
+    description: 'Nexus password'
+    required: false
+
+outputs:
+  analysis-id:
+    description: 'Unique analysis ID'
+  category:
+    description: 'Failure category (CodeChange, Infrastructure, DependencyIssue, etc.)'
+  root-cause-summary:
+    description: 'One-line root cause summary'
+  responsible-team:
+    description: 'Responsible team name'
+  confidence:
+    description: 'Analysis confidence level (high, medium, low)'
+  jira-ticket-key:
+    description: 'Created Jira ticket key (if enabled)'
+  github-issue-url:
+    description: 'Created GitHub issue URL (if enabled)'
+  html-report-path:
+    description: 'Path to the generated HTML report file'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'

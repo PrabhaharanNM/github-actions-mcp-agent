@@ -1,0 +1,6 @@
+node_modules/
+go-binary/mcp-agent-*
+go-binary/mcp-agent.exe
+!go-binary/binaries/
+*.log
+.env
